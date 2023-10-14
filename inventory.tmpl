@@ -1,0 +1,13 @@
+---
+all:
+  hosts: %{~ for i, name in vm-host }
+    ${name}:
+      ansible_host: ${vm-ip[i]}
+      ansible_user: ${vm-user} %{~ endfor }
+  children:
+    loadbalancer:
+      hosts: %{~ for i, name in vm-host } %{~ if "${element(split("-", "${name}"),1)}" == "lb" }
+        ${name}: %{~ endif } %{~ endfor }
+    webapp:
+      hosts: %{~ for i, name in vm-host } %{~ if "${element(split("-", "${name}"),1)}" == "www" }
+        ${name}: %{~ endif } %{~ endfor }

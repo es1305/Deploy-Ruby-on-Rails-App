@@ -1,0 +1,26 @@
+---
+app_user: ruby
+
+ruby_version: '2.4.1'
+ruby_app_name: 'alphacamp_blog_app'
+
+git_src: 'https://github.com/1sherlynn/alphacamp_blog_app'
+git_dst: '/home/{{ app_user }}/www'
+
+db_user: "{{ app_user }}"
+db_name: "{{ app_user }}"
+db_password: 4RubyAccess
+
+nginx_user: "www-data"
+nginx_worker_processes: "{{ ansible_processor_vcpus | default(ansible_processor_count) }}"
+nginx_worker_connections: "768"
+nginx_keepalive_timeout: "65"
+nginx_remove_default_vhost: true
+
+passenger_server_name: "{{ inventory_hostname }}"
+passenger_app_root: "{{ git_dst }}/public"
+passenger_app_env: production
+http_vhost: passenger
+
+passenger_root: /usr/lib/ruby/vendor_ruby/phusion_passenger/locations.ini
+passenger_ruby: /home/"{{ app_user }}"/.rvm/gems/default/bin/ruby

@@ -1,0 +1,7 @@
+---
+acme_domain_name: "{{ inventory_hostname }}"
+acme_user: 'root'
+
+acme_fullchain_file: /etc/ssl/certs/{{ acme_domain_name }}.pem
+acme_key_file: /etc/ssl/private/{{ acme_domain_name }}.key
+acme_reload_cmd: "systemctl reload nginx"

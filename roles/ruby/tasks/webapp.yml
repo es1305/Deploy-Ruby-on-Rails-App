@@ -1,0 +1,75 @@
+---
+- name: Creates directory for web app
+  file:
+    path: "{{ git_dst }}"
+    state: directory
+    owner: ruby
+    mode: 0755
+
+- name: Clone repository
+  git:
+    repo: "{{ git_src }}"
+    dest: "{{ git_dst }}"
+    single_branch: yes
+    version: master
+    accept_hostkey: yes
+    update: no
+
+- name: Install gems if not installed
+  shell: /bin/bash -c "source ~/.profile && bundle install --without test development"
+  args:
+    chdir: "{{ git_dst }}"
+    creates: "~/.rvm/gems/ruby-{{ ruby_version }}@{{ ruby_app_name }}"
+
+- name: Comment old DB config
+  replace:
+    path: "{{ git_dst }}/config/database.yml"
+    regexp: '(^\s.*production.sqlite3)'
+    replace: '#\1'
+
+- name: Update DB config
+  blockinfile:
+    path: "{{ git_dst }}/config/database.yml"
+    marker: "## {mark} added by ansible (DB configuration)"
+    block: |2
+      # 2 spaces
+        adapter: postgresql
+        url: postgres://{{ db_user }}:{{ db_password }}@localhost/{{ db_name }}
+        pool: 5
+        encoding: unicode
+    insertafter: "  <<: postgresql"
+
+- name: Update Secrets config 
+  replace:
+    path: "{{ git_dst }}/config/secrets.yml"
+    regexp: '(^\s.*SECRET_KEY_BASE.*)'
+    replace: '#\1'
+  register: replace_key_result
+
+- name: Generate a cryptographically secure secret key
+  shell: /bin/bash -c "source ~/.profile && rails secret RAILS_ENV=production"
+  register: key_result
+  when: '"1 replacements made" in replace_key_result.msg'
+  args:
+    chdir: "{{ git_dst }}"
+
+- name: Set 'secret_key' variable
+  set_fact:
+    secret_key={{ key_result.stdout }}
+  when: key_result.stdout is defined
+
+- name: Update Secrets config 
+  lineinfile:
+    path: "{{ git_dst }}/config/secrets.yml"
+    line: "  secret_key_base: {{ secret_key }}"
+    state: present
+    insertafter: '^production:'
+  when: secret_key is defined
+
+- name: Make migrations & precompile assets
+  shell: |
+    /bin/bash -c "source ~/.profile && rails db:migrate RAILS_ENV=production"
+    /bin/bash -c "source ~/.profile && rails assets:precompile RAILS_ENV=production"
+  args:
+    chdir: "{{ git_dst }}"
+    creates: "{{ git_dst }}/log/production.log"

@@ -1,0 +1,15 @@
+---
+- hosts: all
+  become: true
+
+  roles:
+    - common
+    - user
+    - postgres
+    - role: ruby
+      become: yes
+      become_user: ruby
+      tags:
+        - ruby
+    - passenger
+    - letsencrypt

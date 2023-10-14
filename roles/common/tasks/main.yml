@@ -1,0 +1,33 @@
+---
+- name: Upgrade a system
+  apt:
+    upgrade: full
+    update_cache: yes
+  register: apt_action
+  retries: 10
+  until: apt_action is success
+         or ('Failed to lock apt for exclusive operation' not in apt_action.msg
+         and '/var/lib/dpkg/lock' not in apt_action.msg)
+
+- name: Install a list of packages
+  apt: name={{ item }} update_cache=true state=present
+  with_items:
+    - curl
+    - git
+    - nodejs
+
+- name: Check if a reboot is needed on a host
+  register: reboot_required_file
+  stat:
+    path: /var/run/reboot-required
+    get_md5: no
+
+- name: Reboot host if kernel updated and wait for it to restart
+  reboot:
+    msg: "Reboot initiated by Ansible"
+    connect_timeout: 10
+    reboot_timeout: 300
+    pre_reboot_delay: 0
+    post_reboot_delay: 60
+    test_command: uptime
+  when: reboot_required_file.stat.exists

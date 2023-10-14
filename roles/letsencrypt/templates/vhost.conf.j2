@@ -1,0 +1,44 @@
+# HTTP redirect
+server {
+    listen 80;
+    server_name {{ acme_domain_name }};
+
+    location / {
+        return 301 https://{{ acme_domain_name }}$request_uri;
+    }
+}
+
+server {
+    listen              443 ssl http2;
+    server_name         {{ acme_domain_name }};
+    ssl_certificate     /root/.acme.sh/{{ acme_domain_name }}/{{ acme_domain_name }}.cer;
+    ssl_certificate_key /root/.acme.sh/{{ acme_domain_name }}/{{ acme_domain_name }}.key;
+
+    passenger_enabled on;
+    passenger_app_env {{ passenger_app_env }};
+    root {{ passenger_app_root }};
+  
+    location ~ "^/assets/.+-([0-9a-f]{32}|[0-9a-f]{64})\..+" {
+      error_page 490 = @static_asset;
+      error_page 491 = @dynamic_request;
+      recursive_error_pages on;
+  
+      if (-f $request_filename) {
+          return 490;
+      }
+      if (!-f $request_filename) {
+          return 491;
+      }
+    }
+    
+    location @static_asset {
+        gzip_static on;
+        expires max;
+        add_header Cache-Control public;
+        add_header ETag "";
+    }
+
+    location @dynamic_request {
+        passenger_enabled on;
+    }
+}

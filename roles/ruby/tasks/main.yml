@@ -1,0 +1,64 @@
+
+---
+- name: Check if GPG keys already exist
+  shell: 'gpg --list-keys | grep -E "{{ gpg_keys[0] }}|{{ gpg_keys[1] }}"'
+  register: keys
+  changed_when: false
+  when: keys is not defined or keys.rc != 0
+  ignore_errors: true
+
+- name: Get GPG keys
+  include_tasks: gpg.yml
+  when: keys.stdout|length < gpg_keys|length
+
+- name: Install RVM
+  shell: 'curl -sSL https://get.rvm.io | bash -s stable'
+  args:
+    creates: "~/.rvm/installed.at"
+
+- name: Get a list of the Ruby dependencies
+  shell: |
+    ~/.rvm/bin/rvm install ruby-{{ ruby_version }} --autolibs=read-fail >/dev/null 2>/tmp/dep.txt
+    /usr/bin/sed '2,$d' /tmp/dep.txt | /usr/bin/awk 'BEGIN{FS=": "}{print $2}'
+  register: p_list
+  changed_when: p_list.stdout|length > 0 
+
+- name: Install Ruby prerequisites
+  shell: 'apt update && apt install -y {{ p_list.stdout }}'
+  when: p_list.stdout|length > 0
+  become: yes
+  become_user: root
+
+- name: Install Ruby
+  command: '~/.rvm/bin/rvm install ruby-{{ ruby_version }}'
+  args:
+    creates: "~/.rvm/rubies/ruby-{{ ruby_version }}/bin/ruby"
+
+- name: Detect default Ruby version
+  command: '~/.rvm/bin/rvm alias list default'
+  changed_when: false
+  register: version
+
+- name: Set variable with default Ruby version
+  set_fact: default_version=ruby-{{ ruby_version }}
+
+- name: Set default Ruby version
+  command: '~/.rvm/bin/rvm alias create default ruby-{{ ruby_version }}'
+  when: version.stdout|default()|length == 0 or
+        default_version not in version.stdout
+
+- name: Use default Ruby version
+  command: '~/.rvm/bin/rvm use ruby-{{ ruby_version }}'
+  changed_when: false
+
+- name: Install bundler if not installed
+  shell: >
+    ls ~/.rvm/gems/ruby-{{ ruby_version }}/wrappers
+    | if ! grep "^bundler " ; then ~/.rvm/gems/ruby-{{ ruby_version }}/wrappers/gem install bundler ; fi
+  args:
+    creates: '~/.rvm/gems/ruby-{{ ruby_version }}/wrappers/bundler'
+  register: bundler_install
+  changed_when: '"Successfully installed bundler" in bundler_install.stdout'
+
+- name: Setup Webapp
+  include_tasks: webapp.yml
