@@ -10,8 +10,6 @@ export AWS_SECRET_KEY=U4Up...
 export DO_API_TOKEN=65f2...
 ```
 
-из раздела [Инфраструктура](https://lk.rebrainme.com/devops?page=infrastructure).
-
 ## TL;DR
 
 В качестве менеджера версий Ruby используется [rvm](https://rvm.io), сервера приложений — [Phusion Passenger®](https://www.phusionpassenger.com/docs/tutorials/what_is_passenger/).
