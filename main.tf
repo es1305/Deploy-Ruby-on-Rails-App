@@ -20,16 +20,16 @@ locals {
   hosts       = ["www-1"]
   image       = "ubuntu-20-04-x64"
   size        = "s-1vcpu-1gb"
-  tags        = ["devops", "es1305_at_mail_ru"]
+  tags        = ["devops", "user_at_example_com"]
   region      = "ams3"
-  dns_zone    = "devops.rebrain.srwx.net."
+  dns_zone    = "devops.example.com."
   remote_user = "root"
   public_key  = file("~/.ssh/id_rsa.pub")
 }
 
 # Execute
-data "digitalocean_ssh_key" "rebrain" {
-  name = "REBRAIN.SSH.PUB.KEY"
+data "digitalocean_ssh_key" "public" {
+  name = "SSH.PUB.KEY"
 }
 
 resource "digitalocean_ssh_key" "default" {
@@ -44,7 +44,7 @@ resource "digitalocean_droplet" "web" {
   region   = local.region
   size     = local.size
   tags     = local.tags
-  ssh_keys = [data.digitalocean_ssh_key.rebrain.id, digitalocean_ssh_key.default.fingerprint]
+  ssh_keys = [data.digitalocean_ssh_key.public.id, digitalocean_ssh_key.default.fingerprint]
 }
 
 data "aws_route53_zone" "selected" {
